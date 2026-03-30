@@ -1,0 +1,92 @@
+-- FREAK RPG Console App
+-- A test of the LLVM backend capabilities
+
+task print_banner() -> void {
+    say "========================================="
+    say "        FREAK OF NATURE: TERMINAL        "
+    say "========================================="
+}
+
+task load_save(filename: word) -> word {
+    pilot data = fs::read(filename)
+    if data.length() > 0 {
+        say "Save loaded: " + data
+        give back data
+    } else {
+        say "No save found. Starting fresh."
+        give back ""
+    }
+}
+
+task battle(player_name: word) -> void {
+    say "A wild BETA appeared!"
+    pilot enemy_hp = 100
+
+    training arc until enemy_hp <= 0 max 10 sessions {
+        say "BETA HP is " + word_from_int(enemy_hp)
+        pilot action = ask("Action (attack/defend/run)? ")
+
+        if action == "attack" {
+            pilot dmg = 25
+            say "You hit for " + word_from_int(dmg) + "!"
+            enemy_hp -= dmg
+        } else if action == "defend" {
+            say "You brace yourself!"
+            enemy_hp -= 5
+        } else if action == "run" {
+            say "You cowared away!"
+            give back
+        } else {
+            say "Invalid action!"
+        }
+    }
+
+    if enemy_hp <= 0 {
+        say "BETA defeated! " + player_name.to_upper() + " wins!"
+    } else {
+        say "You couldn't finish it in time!"
+    }
+}
+
+task rpg_main() -> void {
+    print_banner()
+
+    pilot args_cnt = process::args_count()
+    if args_cnt > 1 {
+        say "Running in mode: " + process::arg(1)
+    }
+
+    pilot player_name = ask("Enter your name, recruit: ")
+    if player_name.length() == 0 {
+        player_name = "Takeru"
+    }
+
+    say "Welcome to the squad, " + player_name + "!"
+
+    -- Using some math and unary operators
+    pilot power_level = 50
+    power_level = PLUS ULTRA power_level
+    say "Your base power is " + word_from_int(power_level)
+
+    pilot save_file = player_name + ".sav"
+    pilot previous_data = load_save(save_file)
+
+    pilot playing = true
+    repeat until not playing {
+        pilot choice = ask("Command [battle/save/quit]: ")
+
+        if choice == "battle" {
+            battle(player_name)
+        } else if choice == "save" {
+            fs::write(save_file, "LVL: " + word_from_int(power_level))
+            say "Game saved to " + save_file
+        } else if choice == "quit" {
+            say "Logging off. Goodbye, " + player_name + "."
+            playing = false
+        } else {
+            say "Unknown command: " + choice
+        }
+    }
+}
+
+rpg_main()

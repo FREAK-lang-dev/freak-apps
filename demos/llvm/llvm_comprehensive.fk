@@ -1,0 +1,145 @@
+-- FREAK LLVM Backend Comprehensive Test
+-- Tests: variables, functions, control flow, shapes, impl methods,
+--        break/continue, pipe operator, string ops, arithmetic
+
+shape Vector {
+    x: num
+    y: num
+}
+
+impl Vector {
+    task magnitude_sq(self) -> num {
+        give back self.x * self.x + self.y * self.y
+    }
+
+    task describe(self) -> word {
+        give back "Vector"
+    }
+}
+
+task double_it(n: int) -> int {
+    give back n * 2
+}
+
+task add(a: int, b: int) -> int {
+    give back a + b
+}
+
+task greet(name: word) -> word {
+    give back "Hello, " + name + "!"
+}
+
+task factorial(n: int) -> int {
+    pilot res = 1
+    pilot i = 1
+    repeat until i > n {
+        res = res * i
+        i += 1
+    }
+    give back res
+}
+
+task main() -> void {
+    say "=== FREAK LLVM Comprehensive Test ==="
+
+    -- Variables and arithmetic
+    say "--- Variables & Arithmetic ---"
+    pilot x = 42
+    pilot y = 8
+    say "x = " + x
+    say "y = " + y
+    pilot sum_xy = x + y
+    say "x + y = " + sum_xy
+    pilot diff_xy = x - y
+    say "x - y = " + diff_xy
+    pilot prod_xy = x * y
+    say "x * y = " + prod_xy
+
+    -- String operations
+    say "--- Strings ---"
+    pilot name = "Takeru"
+    say "Name: " + name
+    pilot greeting = greet(name)
+    say greeting
+
+    -- Control flow: if/else
+    say "--- If/Else ---"
+    if x > 40 {
+        say "x is greater than 40"
+    } else {
+        say "x is 40 or less"
+    }
+
+    -- Function calls
+    say "--- Functions ---"
+    pilot fact5 = factorial(5)
+    say "5! = " + fact5
+
+    -- Pipe operator
+    say "--- Pipe Operator ---"
+    pilot doubled = 21 |> double_it()
+    say "21 doubled = " + doubled
+    pilot sum = 15 |> add(25)
+    say "15 + 25 = " + sum
+
+    -- Loops with break
+    say "--- Break ---"
+    pilot count = 0
+    repeat until count >= 100 {
+        if count == 7 {
+            break
+        }
+        count += 1
+    }
+    say "Stopped at: " + count
+
+    -- Loops with continue
+    say "--- Continue ---"
+    pilot total = 0
+    pilot idx = 0
+    repeat 10 times {
+        idx += 1
+        if idx == 5 {
+            continue
+        }
+        total = total + idx
+    }
+    say "Sum (skip 5): " + total
+
+    -- Shapes
+    say "--- Shapes ---"
+    pilot v = Vector { x: 3.0, y: 4.0 }
+    say "Vector x: {v.x}"
+    say "Vector y: {v.y}"
+
+    -- Impl methods
+    say "--- Impl Methods ---"
+    pilot mag = v.magnitude_sq()
+    say "Magnitude squared: {mag}"
+    pilot desc = v.describe()
+    say "Type: " + desc
+
+    -- Comparisons
+    say "--- Comparisons ---"
+    if 10 == 10 { say "10 == 10: true" }
+    if 10 != 20 { say "10 != 20: true" }
+    if 5 < 10 { say "5 < 10: true" }
+    if 10 > 5 { say "10 > 5: true" }
+
+    -- Boolean logic
+    say "--- Boolean Logic ---"
+    if true and true { say "true and true: true" }
+    if true or false { say "true or false: true" }
+    if not false { say "not false: true" }
+
+    -- When (pattern matching)
+    say "--- When ---"
+    pilot mood = 3
+    when mood {
+        1: say "chill"
+        2: say "focused"
+        3: say "hype"
+    }
+
+    say "=== All Tests Complete ==="
+}

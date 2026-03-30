@@ -1,0 +1,63 @@
+task calculate_power(base: int, friend_boost: int) -> int {
+    -- Use NAKAMA operator for friendship power multiplier
+    give back base NAKAMA friend_boost
+}
+
+task boss_fight(power: int) -> void {
+    say "A wild BOSS appears! Evaluating your power..."
+
+    when power {
+        0 -> { say "You have 0 power. The boss defeats you instantly!" }
+        50 -> { say "50 power? That's decent, but not enough." }
+        30020 -> { say "IT'S OVER 30000! The boss is trembling in fear!" }
+        _ -> { say "Your power level is... uncharted." }
+    }
+
+    if power > 10000 {
+        say "Your power is OVERWHELMING! You obliterate the boss in one punch!"
+    } else {
+        say "You need more power..."
+        say "Initiating TSUNDERE defense maneuver..."
+        pilot defense = TSUNDERE power
+        say "Your defense is " + word_from_int(defense) + ". It's not like you wanted to get hit or anything!"
+    }
+}
+
+task main() -> void {
+    say "======================================"
+    say "||  FREAK ANIME BATTLE SIMULATOR    ||"
+    say "======================================"
+
+    pilot power = 0
+    say "Starting power: " + word_from_int(power)
+
+    say ""
+    say "[ ENTERING THE TRAINING ARC ]"
+    training arc until power >= 50 max 5 sessions {
+        power = power + 10
+        say "Training hard... Current power: " + word_from_int(power)
+    }
+
+    say ""
+    say "[ TOURNAMENT ARC ]"
+    say "Activating PLUS ULTRA!"
+    power = PLUS ULTRA power
+    say "Power after PLUS ULTRA: " + word_from_int(power)
+
+    say "Channeling FINAL FORM!"
+    power = FINAL FORM power
+    say "Power after FINAL FORM: " + word_from_int(power)
+
+    say ""
+    say "[ NAKAMA POWER ]"
+    say "A true friend joins the battle!"
+    pilot friend_power = 20
+    power = calculate_power(power, friend_power)
+    say "Power after NAKAMA boost: " + word_from_int(power)
+
+    say ""
+    say "[ FINAL SHOWDOWN ]"
+    boss_fight(power)
+}
+
+main()

@@ -1,0 +1,619 @@
+-- ===================================================================
+-- FREAK Standard Library — std::math
+-- ===================================================================
+-- Pure FREAK implementations of math functions.
+-- Prefixed with std_ to avoid collision with C runtime during transition.
+-- Once the C runtime is dropped, these become the canonical implementations.
+-- ===================================================================
+
+task std_abs(x: int) -> int {
+    if x < 0 { give back 0 - x }
+    give back x
+}
+
+task std_clamp(x: int, lo: int, hi: int) -> int {
+    if x < lo { give back lo }
+    if x > hi { give back hi }
+    give back x
+}
+
+task std_pow(base: int, exp: int) -> int {
+    if exp < 0 { give back 0 }
+    pilot res = 1
+    pilot b = base
+    pilot e = exp
+    repeat until e <= 0 {
+        pilot half = e / 2
+        pilot even_part = half * 2
+        pilot odd = e - even_part
+        if odd == 1 {
+            res = res * b
+        }
+        b = b * b
+        e = e / 2
+    }
+    give back res
+}
+
+task std_max(a: int, b: int) -> int {
+    if a > b { give back a }
+    give back b
+}
+
+task std_min(a: int, b: int) -> int {
+    if a < b { give back a }
+    give back b
+}
+
+task int_to_word(n: int) -> word {
+    give back word_from_int(n)
+}
+
+task std_sign(x: int) -> int {
+    if x > 0 { give back 1 }
+    if x < 0 { give back 0 - 1 }
+    give back 0
+}
+
+task std_gcd(a: int, b: int) -> int {
+    pilot x = std_abs(a)
+    pilot y = std_abs(b)
+    repeat until y == 0 {
+        pilot tmp = y
+        pilot rem = x - x / y * y
+        x = tmp
+        y = rem
+    }
+    give back x
+}
+
+task std_lcm(a: int, b: int) -> int {
+    if a == 0 or b == 0 { give back 0 }
+    pilot g = std_gcd(a, b)
+    pilot aa = std_abs(a)
+    pilot bb = std_abs(b)
+    give back aa / g * bb
+}
+
+task std_factorial(n: int) -> int {
+    if n <= 1 { give back 1 }
+    pilot f = 1
+    pilot i = 2
+    repeat until i > n {
+        f = f * i
+        i += 1
+    }
+    give back f
+}
+
+task std_fibonacci(n: int) -> int {
+    if n <= 0 { give back 0 }
+    if n == 1 { give back 1 }
+    pilot a = 0
+    pilot b = 1
+    pilot i = 2
+    repeat until i > n {
+        pilot tmp = a + b
+        a = b
+        b = tmp
+        i += 1
+    }
+    give back b
+}
+
+task std_is_even(x: int) -> bool {
+    pilot half = x / 2
+    give back half * 2 == x
+}
+
+task std_is_odd(x: int) -> bool {
+    give back not std_is_even(x)
+}
+-- ===================================================================
+-- FREAK Standard Library — std::string
+-- ===================================================================
+-- String utility functions written in pure FREAK.
+-- These operate on the word type using built-in methods.
+-- ===================================================================
+
+task string_repeat(s: word, count: int) -> word {
+    pilot out = ""
+    pilot i = 0
+    repeat count times {
+        out = out + s
+        i += 1
+    }
+    give back out
+}
+
+task string_pad_left(s: word, width: int, pad_char: word) -> word {
+    pilot slen = s.length()
+    if slen >= width { give back s }
+    pilot needed = width - slen
+    pilot padding = string_repeat(pad_char, needed)
+    give back padding + s
+}
+
+task string_pad_right(s: word, width: int, pad_char: word) -> word {
+    pilot slen = s.length()
+    if slen >= width { give back s }
+    pilot needed = width - slen
+    pilot padding = string_repeat(pad_char, needed)
+    give back s + padding
+}
+
+task string_reverse(s: word) -> word {
+    pilot slen = s.length()
+    if slen <= 1 { give back s }
+    pilot out = ""
+    pilot i = slen - 1
+    repeat slen times {
+        out = out + s.char_at(i)
+        i -= 1
+    }
+    give back out
+}
+
+task string_count(haystack: word, needle: word) -> int {
+    pilot hlen = haystack.length()
+    pilot nlen = needle.length()
+    if nlen == 0 { give back 0 }
+    if nlen > hlen { give back 0 }
+    pilot count = 0
+    pilot i = 0
+    pilot limit = hlen - nlen + 1
+    repeat limit times {
+        pilot match = true
+        pilot j = 0
+        repeat nlen times {
+            if match {
+                if haystack.char_at(i + j) != needle.char_at(j) {
+                    match = false
+                }
+            }
+            j += 1
+        }
+        if match { count += 1 }
+        i += 1
+    }
+    give back count
+}
+
+task string_split(s: word, delim: word) -> word {
+    -- Returns pipe-delimited segments: "a|b|c"
+    pilot slen = s.length()
+    pilot dlen = delim.length()
+    if dlen == 0 { give back s }
+    pilot sp_out = ""
+    pilot sp_cur = ""
+    pilot sp_i = 0
+    repeat slen times {
+        pilot sp_match = true
+        if sp_i + dlen <= slen {
+            pilot sp_j = 0
+            repeat dlen times {
+                if sp_match {
+                    if s.char_at(sp_i + sp_j) != delim.char_at(sp_j) {
+                        sp_match = false
+                    }
+                }
+                sp_j += 1
+            }
+        } else {
+            sp_match = false
+        }
+        if sp_match {
+            if sp_out == "" {
+                sp_out = sp_cur
+            } else {
+                sp_out = sp_out + "|" + sp_cur
+            }
+            sp_cur = ""
+            sp_i += dlen
+        } else {
+            sp_cur = sp_cur + s.char_at(sp_i)
+            sp_i += 1
+        }
+    }
+    -- Add last segment
+    if sp_out == "" {
+        sp_out = sp_cur
+    } else {
+        sp_out = sp_out + "|" + sp_cur
+    }
+    give back sp_out
+}
+
+task string_join(parts: word, separator: word) -> word {
+    -- Joins pipe-delimited segments: "a|b|c" with separator
+    pilot plen = parts.length()
+    if plen == 0 { give back "" }
+    pilot jn_out = ""
+    pilot jn_cur = ""
+    pilot jn_first = true
+    pilot jn_i = 0
+    repeat plen times {
+        pilot jn_c = parts.char_at(jn_i)
+        if jn_c == "|" {
+            if jn_first {
+                jn_out = jn_cur
+                jn_first = false
+            } else {
+                jn_out = jn_out + separator + jn_cur
+            }
+            jn_cur = ""
+        } else {
+            jn_cur = jn_cur + jn_c
+        }
+        jn_i += 1
+    }
+    -- Add last segment
+    if jn_first {
+        jn_out = jn_cur
+    } else {
+        jn_out = jn_out + separator + jn_cur
+    }
+    give back jn_out
+}
+
+task is_digit(c: word) -> bool {
+    if c == "0" { give back true }
+    if c == "1" { give back true }
+    if c == "2" { give back true }
+    if c == "3" { give back true }
+    if c == "4" { give back true }
+    if c == "5" { give back true }
+    if c == "6" { give back true }
+    if c == "7" { give back true }
+    if c == "8" { give back true }
+    if c == "9" { give back true }
+    give back false
+}
+
+task is_alpha(c: word) -> bool {
+    -- Check lowercase
+    if c == "a" or c == "b" or c == "c" or c == "d" or c == "e" { give back true }
+    if c == "f" or c == "g" or c == "h" or c == "i" or c == "j" { give back true }
+    if c == "k" or c == "l" or c == "m" or c == "n" or c == "o" { give back true }
+    if c == "p" or c == "q" or c == "r" or c == "s" or c == "t" { give back true }
+    if c == "u" or c == "v" or c == "w" or c == "x" or c == "y" or c == "z" { give back true }
+    -- Check uppercase
+    if c == "A" or c == "B" or c == "C" or c == "D" or c == "E" { give back true }
+    if c == "F" or c == "G" or c == "H" or c == "I" or c == "J" { give back true }
+    if c == "K" or c == "L" or c == "M" or c == "N" or c == "O" { give back true }
+    if c == "P" or c == "Q" or c == "R" or c == "S" or c == "T" { give back true }
+    if c == "U" or c == "V" or c == "W" or c == "X" or c == "Y" or c == "Z" { give back true }
+    give back false
+}
+
+task is_whitespace(c: word) -> bool {
+    if c == " " { give back true }
+    if c == "\t" { give back true }
+    if c == "\n" { give back true }
+    if c == "\r" { give back true }
+    give back false
+}
+
+task string_starts_with(s: word, prefix: word) -> bool {
+    pilot slen = s.length()
+    pilot plen = prefix.length()
+    if plen > slen { give back false }
+    pilot si = 0
+    repeat plen times {
+        if s.char_at(si) != prefix.char_at(si) { give back false }
+        si += 1
+    }
+    give back true
+}
+
+task string_ends_with(s: word, suffix: word) -> bool {
+    pilot slen = s.length()
+    pilot xlen = suffix.length()
+    if xlen > slen { give back false }
+    pilot offset = slen - xlen
+    pilot ei = 0
+    repeat xlen times {
+        if s.char_at(offset + ei) != suffix.char_at(ei) { give back false }
+        ei += 1
+    }
+    give back true
+}
+
+task string_contains(haystack: word, needle: word) -> bool {
+    give back string_count(haystack, needle) > 0
+}
+
+task string_trim(s: word) -> word {
+    pilot slen = s.length()
+    if slen == 0 { give back s }
+    pilot tstart = 0
+    repeat until tstart >= slen {
+        if not is_whitespace(s.char_at(tstart)) { give back string_trim_end(s, tstart) }
+        tstart += 1
+    }
+    give back ""
+}
+
+task string_trim_end(s: word, tstart: int) -> word {
+    pilot tend = s.length() - 1
+    repeat until tend < tstart {
+        if not is_whitespace(s.char_at(tend)) {
+            pilot tout = ""
+            pilot ti = tstart
+            repeat until ti > tend {
+                tout = tout + s.char_at(ti)
+                ti += 1
+            }
+            give back tout
+        }
+        tend -= 1
+    }
+    give back ""
+}
+
+task string_replace(s: word, old_str: word, new_str: word) -> word {
+    pilot slen = s.length()
+    pilot olen = old_str.length()
+    if olen == 0 { give back s }
+    pilot rout = ""
+    pilot ri = 0
+    repeat until ri >= slen {
+        pilot rmatch = true
+        if ri + olen <= slen {
+            pilot rj = 0
+            repeat olen times {
+                if rmatch {
+                    if s.char_at(ri + rj) != old_str.char_at(rj) {
+                        rmatch = false
+                    }
+                }
+                rj += 1
+            }
+        } else {
+            rmatch = false
+        }
+        if rmatch {
+            rout = rout + new_str
+            ri += olen
+        } else {
+            rout = rout + s.char_at(ri)
+            ri += 1
+        }
+    }
+    give back rout
+}
+
+task string_substring(s: word, start_idx: int, end_idx: int) -> word {
+    pilot slen = s.length()
+    pilot ss = start_idx
+    pilot se = end_idx
+    if ss < 0 { ss = 0 }
+    if se > slen { se = slen }
+    if ss >= se { give back "" }
+    pilot sub_out = ""
+    pilot si = ss
+    repeat until si >= se {
+        sub_out = sub_out + s.char_at(si)
+        si += 1
+    }
+    give back sub_out
+}
+
+task string_index_of(s: word, needle: word) -> int {
+    pilot slen = s.length()
+    pilot nlen = needle.length()
+    if nlen == 0 { give back 0 }
+    if nlen > slen { give back 0 - 1 }
+    pilot limit = slen - nlen + 1
+    pilot fi = 0
+    repeat limit times {
+        pilot fmatch = true
+        pilot fj = 0
+        repeat nlen times {
+            if fmatch {
+                if s.char_at(fi + fj) != needle.char_at(fj) {
+                    fmatch = false
+                }
+            }
+            fj += 1
+        }
+        if fmatch { give back fi }
+        fi += 1
+    }
+    give back 0 - 1
+}
+-- ===================================================================
+-- FREAK Standard Library — std::convert
+-- ===================================================================
+-- Number-to-string conversion utilities in pure FREAK.
+-- ===================================================================
+
+task int_to_hex(n: int) -> word {
+    if n == 0 { give back "0" }
+    pilot hex_chars = "0123456789abcdef"
+    pilot neg = false
+    pilot val = n
+    if val < 0 {
+        neg = true
+        val = 0 - val
+    }
+    pilot hex_out = ""
+    repeat until val <= 0 {
+        pilot rem = val - val / 16 * 16
+        hex_out = hex_chars.char_at(rem) + hex_out
+        val = val / 16
+    }
+    if neg { hex_out = "-" + hex_out }
+    give back hex_out
+}
+
+task int_to_bin(n: int) -> word {
+    if n == 0 { give back "0" }
+    pilot neg = false
+    pilot val = n
+    if val < 0 {
+        neg = true
+        val = 0 - val
+    }
+    pilot bin_out = ""
+    repeat until val <= 0 {
+        pilot rem = val - val / 2 * 2
+        if rem == 1 {
+            bin_out = "1" + bin_out
+        } else {
+            bin_out = "0" + bin_out
+        }
+        val = val / 2
+    }
+    if neg { bin_out = "-" + bin_out }
+    give back bin_out
+}
+
+task int_to_oct(n: int) -> word {
+    if n == 0 { give back "0" }
+    pilot oct_chars = "01234567"
+    pilot neg = false
+    pilot val = n
+    if val < 0 {
+        neg = true
+        val = 0 - val
+    }
+    pilot oct_out = ""
+    repeat until val <= 0 {
+        pilot rem = val - val / 8 * 8
+        oct_out = oct_chars.char_at(rem) + oct_out
+        val = val / 8
+    }
+    if neg { oct_out = "-" + oct_out }
+    give back oct_out
+}
+
+task char_to_digit(c: word) -> int {
+    if c == "0" { give back 0 }
+    if c == "1" { give back 1 }
+    if c == "2" { give back 2 }
+    if c == "3" { give back 3 }
+    if c == "4" { give back 4 }
+    if c == "5" { give back 5 }
+    if c == "6" { give back 6 }
+    if c == "7" { give back 7 }
+    if c == "8" { give back 8 }
+    if c == "9" { give back 9 }
+    give back 0 - 1
+}
+
+task word_to_int_safe(s: word) -> int {
+    pilot slen = s.length()
+    if slen == 0 { give back 0 }
+    pilot neg = false
+    pilot wi = 0
+    if s.char_at(0) == "-" {
+        neg = true
+        wi = 1
+    }
+    pilot num = 0
+    repeat until wi >= slen {
+        pilot d = char_to_digit(s.char_at(wi))
+        if d < 0 { give back 0 }
+        num = num * 10 + d
+        wi += 1
+    }
+    if neg { give back 0 - num }
+    give back num
+}
+
+task bool_to_word(b: bool) -> word {
+    if b { give back "true" }
+    give back "false"
+}
+-- Test: Extended FREAK standard library functions
+
+-- === std::math extended ===
+pilot s1 = std_sign(42)
+say "sign(42) = " + word_from_int(s1)
+
+pilot s2 = std_sign(0 - 7)
+say "sign(-7) = " + word_from_int(s2)
+
+pilot s3 = std_sign(0)
+say "sign(0) = " + word_from_int(s3)
+
+pilot g1 = std_gcd(48, 18)
+say "gcd(48,18) = " + word_from_int(g1)
+
+pilot g2 = std_gcd(100, 75)
+say "gcd(100,75) = " + word_from_int(g2)
+
+pilot l1 = std_lcm(4, 6)
+say "lcm(4,6) = " + word_from_int(l1)
+
+pilot f1 = std_factorial(5)
+say "factorial(5) = " + word_from_int(f1)
+
+pilot f2 = std_factorial(10)
+say "factorial(10) = " + word_from_int(f2)
+
+pilot fib1 = std_fibonacci(10)
+say "fibonacci(10) = " + word_from_int(fib1)
+
+pilot fib2 = std_fibonacci(20)
+say "fibonacci(20) = " + word_from_int(fib2)
+
+pilot ev1 = std_is_even(42)
+say "is_even(42) = " + bool_to_word(ev1)
+
+pilot ev2 = std_is_odd(7)
+say "is_odd(7) = " + bool_to_word(ev2)
+
+-- === std::convert ===
+pilot h1 = int_to_hex(255)
+say "hex(255) = " + h1
+
+pilot h2 = int_to_hex(4096)
+say "hex(4096) = " + h2
+
+pilot b1 = int_to_bin(42)
+say "bin(42) = " + b1
+
+pilot b2 = int_to_bin(255)
+say "bin(255) = " + b2
+
+pilot o1 = int_to_oct(255)
+say "oct(255) = " + o1
+
+pilot wi1 = word_to_int_safe("12345")
+say "word_to_int('12345') = " + word_from_int(wi1)
+
+pilot wi2 = word_to_int_safe("-42")
+say "word_to_int('-42') = " + word_from_int(wi2)
+
+-- === std::string extended ===
+pilot sw1 = string_starts_with("FREAK lang", "FREAK")
+say "starts_with('FREAK lang','FREAK') = " + bool_to_word(sw1)
+
+pilot sw2 = string_starts_with("FREAK lang", "lang")
+say "starts_with('FREAK lang','lang') = " + bool_to_word(sw2)
+
+pilot ew1 = string_ends_with("FREAK lang", "lang")
+say "ends_with('FREAK lang','lang') = " + bool_to_word(ew1)
+
+pilot ct1 = string_contains("hello world", "world")
+say "contains('hello world','world') = " + bool_to_word(ct1)
+
+pilot tr1 = string_trim("  hello  ")
+say "trim('  hello  ') = [" + tr1 + "]"
+
+pilot rp1 = string_replace("foo bar foo", "foo", "baz")
+say "replace('foo bar foo','foo','baz') = " + rp1
+
+pilot ss1 = string_substring("FREAK lang", 0, 5)
+say "substring('FREAK lang',0,5) = " + ss1
+
+pilot ix1 = string_index_of("hello world", "world")
+say "index_of('hello world','world') = " + word_from_int(ix1)
+
+pilot ix2 = string_index_of("hello world", "xyz")
+say "index_of('hello world','xyz') = " + word_from_int(ix2)
+
+say ""
+say "All extended std tests passed!"

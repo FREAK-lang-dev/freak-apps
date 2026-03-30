@@ -1,0 +1,842 @@
+-- ===================================================================
+-- FREAK Standard Library — std::math
+-- ===================================================================
+-- Pure FREAK implementations of math functions.
+-- Prefixed with std_ to avoid collision with C runtime during transition.
+-- Once the C runtime is dropped, these become the canonical implementations.
+-- ===================================================================
+
+task std_abs(x: int) -> int {
+    if x < 0 { give back 0 - x }
+    give back x
+}
+
+task std_clamp(x: int, lo: int, hi: int) -> int {
+    if x < lo { give back lo }
+    if x > hi { give back hi }
+    give back x
+}
+
+task std_pow(base: int, exp: int) -> int {
+    if exp < 0 { give back 0 }
+    pilot res = 1
+    pilot b = base
+    pilot e = exp
+    repeat until e <= 0 {
+        pilot half = e / 2
+        pilot even_part = half * 2
+        pilot odd = e - even_part
+        if odd == 1 {
+            res = res * b
+        }
+        b = b * b
+        e = e / 2
+    }
+    give back res
+}
+
+task std_max(a: int, b: int) -> int {
+    if a > b { give back a }
+    give back b
+}
+
+task std_min(a: int, b: int) -> int {
+    if a < b { give back a }
+    give back b
+}
+
+task int_to_word(n: int) -> word {
+    give back word_from_int(n)
+}
+
+task std_sign(x: int) -> int {
+    if x > 0 { give back 1 }
+    if x < 0 { give back 0 - 1 }
+    give back 0
+}
+
+task std_gcd(a: int, b: int) -> int {
+    pilot x = std_abs(a)
+    pilot y = std_abs(b)
+    repeat until y == 0 {
+        pilot tmp = y
+        pilot rem = x - x / y * y
+        x = tmp
+        y = rem
+    }
+    give back x
+}
+
+task std_lcm(a: int, b: int) -> int {
+    if a == 0 or b == 0 { give back 0 }
+    pilot g = std_gcd(a, b)
+    pilot aa = std_abs(a)
+    pilot bb = std_abs(b)
+    give back aa / g * bb
+}
+
+task std_factorial(n: int) -> int {
+    if n <= 1 { give back 1 }
+    pilot f = 1
+    pilot i = 2
+    repeat until i > n {
+        f = f * i
+        i += 1
+    }
+    give back f
+}
+
+task std_fibonacci(n: int) -> int {
+    if n <= 0 { give back 0 }
+    if n == 1 { give back 1 }
+    pilot a = 0
+    pilot b = 1
+    pilot i = 2
+    repeat until i > n {
+        pilot tmp = a + b
+        a = b
+        b = tmp
+        i += 1
+    }
+    give back b
+}
+
+task std_is_even(x: int) -> bool {
+    pilot half = x / 2
+    give back half * 2 == x
+}
+
+task std_is_odd(x: int) -> bool {
+    give back not std_is_even(x)
+}
+-- ===================================================================
+-- FREAK Standard Library — std::string
+-- ===================================================================
+-- String utility functions written in pure FREAK.
+-- These operate on the word type using built-in methods.
+-- ===================================================================
+
+task string_repeat(s: word, count: int) -> word {
+    pilot out = ""
+    pilot i = 0
+    repeat count times {
+        out = out + s
+        i += 1
+    }
+    give back out
+}
+
+task string_pad_left(s: word, width: int, pad_char: word) -> word {
+    pilot slen = s.length()
+    if slen >= width { give back s }
+    pilot needed = width - slen
+    pilot padding = string_repeat(pad_char, needed)
+    give back padding + s
+}
+
+task string_pad_right(s: word, width: int, pad_char: word) -> word {
+    pilot slen = s.length()
+    if slen >= width { give back s }
+    pilot needed = width - slen
+    pilot padding = string_repeat(pad_char, needed)
+    give back s + padding
+}
+
+task string_reverse(s: word) -> word {
+    pilot slen = s.length()
+    if slen <= 1 { give back s }
+    pilot out = ""
+    pilot i = slen - 1
+    repeat slen times {
+        out = out + s.char_at(i)
+        i -= 1
+    }
+    give back out
+}
+
+task string_count(haystack: word, needle: word) -> int {
+    pilot hlen = haystack.length()
+    pilot nlen = needle.length()
+    if nlen == 0 { give back 0 }
+    if nlen > hlen { give back 0 }
+    pilot count = 0
+    pilot i = 0
+    pilot limit = hlen - nlen + 1
+    repeat limit times {
+        pilot match = true
+        pilot j = 0
+        repeat nlen times {
+            if match {
+                if haystack.char_at(i + j) != needle.char_at(j) {
+                    match = false
+                }
+            }
+            j += 1
+        }
+        if match { count += 1 }
+        i += 1
+    }
+    give back count
+}
+
+task string_split(s: word, delim: word) -> word {
+    -- Returns pipe-delimited segments: "a|b|c"
+    pilot slen = s.length()
+    pilot dlen = delim.length()
+    if dlen == 0 { give back s }
+    pilot sp_out = ""
+    pilot sp_cur = ""
+    pilot sp_i = 0
+    repeat slen times {
+        pilot sp_match = true
+        if sp_i + dlen <= slen {
+            pilot sp_j = 0
+            repeat dlen times {
+                if sp_match {
+                    if s.char_at(sp_i + sp_j) != delim.char_at(sp_j) {
+                        sp_match = false
+                    }
+                }
+                sp_j += 1
+            }
+        } else {
+            sp_match = false
+        }
+        if sp_match {
+            if sp_out == "" {
+                sp_out = sp_cur
+            } else {
+                sp_out = sp_out + "|" + sp_cur
+            }
+            sp_cur = ""
+            sp_i += dlen
+        } else {
+            sp_cur = sp_cur + s.char_at(sp_i)
+            sp_i += 1
+        }
+    }
+    -- Add last segment
+    if sp_out == "" {
+        sp_out = sp_cur
+    } else {
+        sp_out = sp_out + "|" + sp_cur
+    }
+    give back sp_out
+}
+
+task string_join(parts: word, separator: word) -> word {
+    -- Joins pipe-delimited segments: "a|b|c" with separator
+    pilot plen = parts.length()
+    if plen == 0 { give back "" }
+    pilot jn_out = ""
+    pilot jn_cur = ""
+    pilot jn_first = true
+    pilot jn_i = 0
+    repeat plen times {
+        pilot jn_c = parts.char_at(jn_i)
+        if jn_c == "|" {
+            if jn_first {
+                jn_out = jn_cur
+                jn_first = false
+            } else {
+                jn_out = jn_out + separator + jn_cur
+            }
+            jn_cur = ""
+        } else {
+            jn_cur = jn_cur + jn_c
+        }
+        jn_i += 1
+    }
+    -- Add last segment
+    if jn_first {
+        jn_out = jn_cur
+    } else {
+        jn_out = jn_out + separator + jn_cur
+    }
+    give back jn_out
+}
+
+task is_digit(c: word) -> bool {
+    if c == "0" { give back true }
+    if c == "1" { give back true }
+    if c == "2" { give back true }
+    if c == "3" { give back true }
+    if c == "4" { give back true }
+    if c == "5" { give back true }
+    if c == "6" { give back true }
+    if c == "7" { give back true }
+    if c == "8" { give back true }
+    if c == "9" { give back true }
+    give back false
+}
+
+task is_alpha(c: word) -> bool {
+    -- Check lowercase
+    if c == "a" or c == "b" or c == "c" or c == "d" or c == "e" { give back true }
+    if c == "f" or c == "g" or c == "h" or c == "i" or c == "j" { give back true }
+    if c == "k" or c == "l" or c == "m" or c == "n" or c == "o" { give back true }
+    if c == "p" or c == "q" or c == "r" or c == "s" or c == "t" { give back true }
+    if c == "u" or c == "v" or c == "w" or c == "x" or c == "y" or c == "z" { give back true }
+    -- Check uppercase
+    if c == "A" or c == "B" or c == "C" or c == "D" or c == "E" { give back true }
+    if c == "F" or c == "G" or c == "H" or c == "I" or c == "J" { give back true }
+    if c == "K" or c == "L" or c == "M" or c == "N" or c == "O" { give back true }
+    if c == "P" or c == "Q" or c == "R" or c == "S" or c == "T" { give back true }
+    if c == "U" or c == "V" or c == "W" or c == "X" or c == "Y" or c == "Z" { give back true }
+    give back false
+}
+
+task is_whitespace(c: word) -> bool {
+    if c == " " { give back true }
+    if c == "\t" { give back true }
+    if c == "\n" { give back true }
+    if c == "\r" { give back true }
+    give back false
+}
+
+task string_starts_with(s: word, prefix: word) -> bool {
+    pilot slen = s.length()
+    pilot plen = prefix.length()
+    if plen > slen { give back false }
+    pilot si = 0
+    repeat plen times {
+        if s.char_at(si) != prefix.char_at(si) { give back false }
+        si += 1
+    }
+    give back true
+}
+
+task string_ends_with(s: word, suffix: word) -> bool {
+    pilot slen = s.length()
+    pilot xlen = suffix.length()
+    if xlen > slen { give back false }
+    pilot offset = slen - xlen
+    pilot ei = 0
+    repeat xlen times {
+        if s.char_at(offset + ei) != suffix.char_at(ei) { give back false }
+        ei += 1
+    }
+    give back true
+}
+
+task string_contains(haystack: word, needle: word) -> bool {
+    give back string_count(haystack, needle) > 0
+}
+
+task string_trim(s: word) -> word {
+    pilot slen = s.length()
+    if slen == 0 { give back s }
+    pilot tstart = 0
+    repeat until tstart >= slen {
+        if not is_whitespace(s.char_at(tstart)) { give back string_trim_end(s, tstart) }
+        tstart += 1
+    }
+    give back ""
+}
+
+task string_trim_end(s: word, tstart: int) -> word {
+    pilot tend = s.length() - 1
+    repeat until tend < tstart {
+        if not is_whitespace(s.char_at(tend)) {
+            pilot tout = ""
+            pilot ti = tstart
+            repeat until ti > tend {
+                tout = tout + s.char_at(ti)
+                ti += 1
+            }
+            give back tout
+        }
+        tend -= 1
+    }
+    give back ""
+}
+
+task string_replace(s: word, old_str: word, new_str: word) -> word {
+    pilot slen = s.length()
+    pilot olen = old_str.length()
+    if olen == 0 { give back s }
+    pilot rout = ""
+    pilot ri = 0
+    repeat until ri >= slen {
+        pilot rmatch = true
+        if ri + olen <= slen {
+            pilot rj = 0
+            repeat olen times {
+                if rmatch {
+                    if s.char_at(ri + rj) != old_str.char_at(rj) {
+                        rmatch = false
+                    }
+                }
+                rj += 1
+            }
+        } else {
+            rmatch = false
+        }
+        if rmatch {
+            rout = rout + new_str
+            ri += olen
+        } else {
+            rout = rout + s.char_at(ri)
+            ri += 1
+        }
+    }
+    give back rout
+}
+
+task string_substring(s: word, start_idx: int, end_idx: int) -> word {
+    pilot slen = s.length()
+    pilot ss = start_idx
+    pilot se = end_idx
+    if ss < 0 { ss = 0 }
+    if se > slen { se = slen }
+    if ss >= se { give back "" }
+    pilot sub_out = ""
+    pilot si = ss
+    repeat until si >= se {
+        sub_out = sub_out + s.char_at(si)
+        si += 1
+    }
+    give back sub_out
+}
+
+task string_index_of(s: word, needle: word) -> int {
+    pilot slen = s.length()
+    pilot nlen = needle.length()
+    if nlen == 0 { give back 0 }
+    if nlen > slen { give back 0 - 1 }
+    pilot limit = slen - nlen + 1
+    pilot fi = 0
+    repeat limit times {
+        pilot fmatch = true
+        pilot fj = 0
+        repeat nlen times {
+            if fmatch {
+                if s.char_at(fi + fj) != needle.char_at(fj) {
+                    fmatch = false
+                }
+            }
+            fj += 1
+        }
+        if fmatch { give back fi }
+        fi += 1
+    }
+    give back 0 - 1
+}
+-- ===================================================================
+-- FREAK Standard Library — std::convert
+-- ===================================================================
+-- Number-to-string conversion utilities in pure FREAK.
+-- ===================================================================
+
+task int_to_hex(n: int) -> word {
+    if n == 0 { give back "0" }
+    pilot hex_chars = "0123456789abcdef"
+    pilot neg = false
+    pilot val = n
+    if val < 0 {
+        neg = true
+        val = 0 - val
+    }
+    pilot hex_out = ""
+    repeat until val <= 0 {
+        pilot rem = val - val / 16 * 16
+        hex_out = hex_chars.char_at(rem) + hex_out
+        val = val / 16
+    }
+    if neg { hex_out = "-" + hex_out }
+    give back hex_out
+}
+
+task int_to_bin(n: int) -> word {
+    if n == 0 { give back "0" }
+    pilot neg = false
+    pilot val = n
+    if val < 0 {
+        neg = true
+        val = 0 - val
+    }
+    pilot bin_out = ""
+    repeat until val <= 0 {
+        pilot rem = val - val / 2 * 2
+        if rem == 1 {
+            bin_out = "1" + bin_out
+        } else {
+            bin_out = "0" + bin_out
+        }
+        val = val / 2
+    }
+    if neg { bin_out = "-" + bin_out }
+    give back bin_out
+}
+
+task int_to_oct(n: int) -> word {
+    if n == 0 { give back "0" }
+    pilot oct_chars = "01234567"
+    pilot neg = false
+    pilot val = n
+    if val < 0 {
+        neg = true
+        val = 0 - val
+    }
+    pilot oct_out = ""
+    repeat until val <= 0 {
+        pilot rem = val - val / 8 * 8
+        oct_out = oct_chars.char_at(rem) + oct_out
+        val = val / 8
+    }
+    if neg { oct_out = "-" + oct_out }
+    give back oct_out
+}
+
+task char_to_digit(c: word) -> int {
+    if c == "0" { give back 0 }
+    if c == "1" { give back 1 }
+    if c == "2" { give back 2 }
+    if c == "3" { give back 3 }
+    if c == "4" { give back 4 }
+    if c == "5" { give back 5 }
+    if c == "6" { give back 6 }
+    if c == "7" { give back 7 }
+    if c == "8" { give back 8 }
+    if c == "9" { give back 9 }
+    give back 0 - 1
+}
+
+task word_to_int_safe(s: word) -> int {
+    pilot slen = s.length()
+    if slen == 0 { give back 0 }
+    pilot neg = false
+    pilot wi = 0
+    if s.char_at(0) == "-" {
+        neg = true
+        wi = 1
+    }
+    pilot num = 0
+    repeat until wi >= slen {
+        pilot d = char_to_digit(s.char_at(wi))
+        if d < 0 { give back 0 }
+        num = num * 10 + d
+        wi += 1
+    }
+    if neg { give back 0 - num }
+    give back num
+}
+
+task bool_to_word(b: bool) -> word {
+    if b { give back "true" }
+    give back "false"
+}
+-- ===================================================================
+-- FREAK Standard Library — std::algorithm
+-- ===================================================================
+-- Sorting, searching, and array utility algorithms in pure FREAK.
+-- Uses the C runtime array_* primitives as the underlying storage.
+-- ===================================================================
+
+-- Sort an integer array in-place using insertion sort.
+-- handle: array handle from array_new()
+task array_sort_int(handle: int) -> void {
+    pilot alen = array_len(handle)
+    if alen <= 1 { give back }
+    pilot si = 1
+    repeat until si >= alen {
+        pilot key_w: word = array_get(handle, si)
+        pilot key = word_to_int(key_w)
+        pilot sj = si - 1
+        pilot sorted = false
+        repeat until sj < 0 or sorted {
+            pilot cw: word = array_get(handle, sj)
+            pilot cv = word_to_int(cw)
+            if cv > key {
+                array_set(handle, sj + 1, cw)
+                sj -= 1
+            } else {
+                sorted = true
+            }
+        }
+        array_set(handle, sj + 1, word_from_int(key))
+        si += 1
+    }
+}
+
+-- Sort a word array in-place (lexicographic, using string comparison).
+task array_sort_word(handle: int) -> void {
+    pilot alen = array_len(handle)
+    if alen <= 1 { give back }
+    pilot si = 1
+    repeat until si >= alen {
+        pilot key_w: word = array_get(handle, si)
+        pilot sj = si - 1
+        pilot sorted = false
+        repeat until sj < 0 or sorted {
+            pilot cw: word = array_get(handle, sj)
+            if freak_word_compare(cw, key_w) > 0 {
+                array_set(handle, sj + 1, cw)
+                sj -= 1
+            } else {
+                sorted = true
+            }
+        }
+        array_set(handle, sj + 1, key_w)
+        si += 1
+    }
+}
+
+-- Lexicographic comparison: returns -1, 0, or 1.
+-- Uses the C runtime's strcmp-based comparison for correct ordering.
+extern task freak_word_compare(a: word, b: word) -> int
+
+-- Binary search on a sorted integer array. Returns index or -1.
+task array_binary_search_int(handle: int, target: int) -> int {
+    pilot lo = 0
+    pilot hi = array_len(handle) - 1
+    repeat until lo > hi {
+        pilot range = hi - lo
+        pilot half = range / 2
+        pilot mid = lo + half
+        pilot mw: word = array_get(handle, mid)
+        pilot mv = word_to_int(mw)
+        if mv == target { give back mid }
+        if mv < target {
+            lo = mid + 1
+        } else {
+            hi = mid - 1
+        }
+    }
+    give back 0 - 1
+}
+
+-- Linear search in an array. Returns index or -1.
+task array_find(handle: int, target: word) -> int {
+    pilot alen = array_len(handle)
+    pilot fi = 0
+    repeat alen times {
+        pilot fw: word = array_get(handle, fi)
+        if fw == target { give back fi }
+        fi += 1
+    }
+    give back 0 - 1
+}
+
+-- Check if an array contains a value.
+task array_contains(handle: int, target: word) -> bool {
+    give back array_find(handle, target) >= 0
+}
+
+-- Reverse an array in-place.
+task array_reverse(handle: int) -> void {
+    pilot alen = array_len(handle)
+    if alen <= 1 { give back }
+    pilot lo = 0
+    pilot hi = alen - 1
+    repeat until lo >= hi {
+        pilot tmp: word = array_get(handle, lo)
+        pilot hw: word = array_get(handle, hi)
+        array_set(handle, lo, hw)
+        array_set(handle, hi, tmp)
+        lo += 1
+        hi -= 1
+    }
+}
+
+-- Copy elements from one array to a new array.
+task array_copy(handle: int) -> int {
+    pilot new_arr = array_new()
+    pilot alen = array_len(handle)
+    pilot ci = 0
+    repeat alen times {
+        pilot cw: word = array_get(handle, ci)
+        array_push(new_arr, cw)
+        ci += 1
+    }
+    give back new_arr
+}
+
+-- Join array elements into a single word with separator.
+task array_join(handle: int, sep: word) -> word {
+    pilot alen = array_len(handle)
+    if alen == 0 { give back "" }
+    pilot aj_out: word = array_get(handle, 0)
+    pilot ji = 1
+    repeat until ji >= alen {
+        pilot jw: word = array_get(handle, ji)
+        aj_out = aj_out + sep + jw
+        ji += 1
+    }
+    give back aj_out
+}
+
+-- Count occurrences of a value in an array.
+task array_count(handle: int, target: word) -> int {
+    pilot alen = array_len(handle)
+    pilot cnt = 0
+    pilot ci = 0
+    repeat alen times {
+        pilot cw: word = array_get(handle, ci)
+        if cw == target { cnt += 1 }
+        ci += 1
+    }
+    give back cnt
+}
+
+-- Remove duplicates from a sorted array (in-place). Returns new length.
+task array_unique(handle: int) -> int {
+    pilot alen = array_len(handle)
+    if alen <= 1 { give back alen }
+    pilot write_idx = 1
+    pilot ri = 1
+    repeat until ri >= alen {
+        pilot cur: word = array_get(handle, ri)
+        pilot prev: word = array_get(handle, ri - 1)
+        if cur != prev {
+            array_set(handle, write_idx, cur)
+            write_idx += 1
+        }
+        ri += 1
+    }
+    give back write_idx
+}
+
+-- Sum all integer values in an array.
+task array_sum_int(handle: int) -> int {
+    pilot alen = array_len(handle)
+    pilot total = 0
+    pilot si = 0
+    repeat alen times {
+        pilot sw: word = array_get(handle, si)
+        total += word_to_int(sw)
+        si += 1
+    }
+    give back total
+}
+
+-- Find the maximum integer value in an array. Returns 0 for empty.
+task array_max_int(handle: int) -> int {
+    pilot alen = array_len(handle)
+    if alen == 0 { give back 0 }
+    pilot mw: word = array_get(handle, 0)
+    pilot mx = word_to_int(mw)
+    pilot mi = 1
+    repeat until mi >= alen {
+        pilot cw: word = array_get(handle, mi)
+        pilot cv = word_to_int(cw)
+        if cv > mx { mx = cv }
+        mi += 1
+    }
+    give back mx
+}
+
+-- Find the minimum integer value in an array. Returns 0 for empty.
+task array_min_int(handle: int) -> int {
+    pilot alen = array_len(handle)
+    if alen == 0 { give back 0 }
+    pilot mw: word = array_get(handle, 0)
+    pilot mn = word_to_int(mw)
+    pilot mi = 1
+    repeat until mi >= alen {
+        pilot cw: word = array_get(handle, mi)
+        pilot cv = word_to_int(cw)
+        if cv < mn { mn = cv }
+        mi += 1
+    }
+    give back mn
+}
+-- Test: std::algorithm
+
+-- === Sort ===
+pilot arr1 = array_new()
+array_push(arr1, "5")
+array_push(arr1, "2")
+array_push(arr1, "8")
+array_push(arr1, "1")
+array_push(arr1, "9")
+array_push(arr1, "3")
+array_sort_int(arr1)
+say "sort_int: " + array_join(arr1, ",")
+
+pilot arr2 = array_new()
+array_push(arr2, "banana")
+array_push(arr2, "apple")
+array_push(arr2, "cherry")
+array_push(arr2, "date")
+array_sort_word(arr2)
+say "sort_word: " + array_join(arr2, ",")
+
+-- === Search ===
+pilot idx1 = array_binary_search_int(arr1, 8)
+say "binary_search(8) = " + word_from_int(idx1)
+
+pilot idx2 = array_binary_search_int(arr1, 7)
+say "binary_search(7) = " + word_from_int(idx2)
+
+pilot idx3 = array_find(arr2, "cherry")
+say "find('cherry') = " + word_from_int(idx3)
+
+pilot has = array_contains(arr2, "apple")
+say "contains('apple') = " + bool_to_word(has)
+
+pilot not_has = array_contains(arr2, "fig")
+say "contains('fig') = " + bool_to_word(not_has)
+
+-- === Reverse ===
+pilot arr3 = array_new()
+array_push(arr3, "a")
+array_push(arr3, "b")
+array_push(arr3, "c")
+array_push(arr3, "d")
+array_reverse(arr3)
+say "reverse: " + array_join(arr3, ",")
+
+-- === Copy ===
+pilot arr4 = array_copy(arr3)
+say "copy: " + array_join(arr4, ",")
+
+-- === Count ===
+pilot arr5 = array_new()
+array_push(arr5, "x")
+array_push(arr5, "y")
+array_push(arr5, "x")
+array_push(arr5, "z")
+array_push(arr5, "x")
+pilot xcount = array_count(arr5, "x")
+say "count('x') = " + word_from_int(xcount)
+
+-- === Unique ===
+pilot arr6 = array_new()
+array_push(arr6, "1")
+array_push(arr6, "1")
+array_push(arr6, "2")
+array_push(arr6, "3")
+array_push(arr6, "3")
+array_push(arr6, "3")
+array_push(arr6, "4")
+pilot ulen = array_unique(arr6)
+say "unique length = " + word_from_int(ulen)
+
+-- === Aggregate ===
+pilot arr7 = array_new()
+array_push(arr7, "10")
+array_push(arr7, "20")
+array_push(arr7, "30")
+array_push(arr7, "5")
+pilot total = array_sum_int(arr7)
+say "sum = " + word_from_int(total)
+
+pilot mx = array_max_int(arr7)
+say "max = " + word_from_int(mx)
+
+pilot mn = array_min_int(arr7)
+say "min = " + word_from_int(mn)
+
+-- === freak_word_compare ===
+pilot cmp1 = freak_word_compare("apple", "banana")
+say "compare('apple','banana') = " + word_from_int(cmp1)
+
+pilot cmp2 = freak_word_compare("hello", "hello")
+say "compare('hello','hello') = " + word_from_int(cmp2)
+
+pilot cmp3 = freak_word_compare("zebra", "ant")
+say "compare('zebra','ant') = " + word_from_int(cmp3)
+
+say ""
+say "All algorithm tests passed!"

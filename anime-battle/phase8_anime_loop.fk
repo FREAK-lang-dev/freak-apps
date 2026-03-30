@@ -1,0 +1,38 @@
+task start_test() -> void {
+    pilot x = 5
+    pilot y = 10
+
+    say "Testing NAKAMA:"
+    pilot nak = x NAKAMA y
+    say "5 NAKAMA 10 = " + word_from_int(nak)
+
+    say "Testing PLUS ULTRA:"
+    pilot pu = PLUS ULTRA x
+    say "PLUS ULTRA 5 = " + word_from_int(pu)
+
+    say "Testing FINAL FORM:"
+    pilot ff = FINAL FORM x
+    say "FINAL FORM 5 = " + word_from_int(ff)
+
+    say "Testing TSUNDERE:"
+    pilot ts = TSUNDERE x
+    say "TSUNDERE 5 = " + word_from_int(ts)
+
+    say "Testing when:"
+    pilot target = 2
+    when target {
+        1 -> { say "it's 1" }
+        2 -> { say "it's 2!" }
+        _ -> { say "default case" }
+    }
+
+    say "Testing training arc:"
+    pilot power = 0
+    training arc until power == 3 max 10 sessions {
+        say "Training session! Power is now " + word_from_int(power)
+        power = power + 1
+    }
+    say "Done training."
+}
+
+start_test()

@@ -1,0 +1,1203 @@
+-- ===================================================================
+-- FREAK Standard Library — std::math
+-- ===================================================================
+-- Pure FREAK implementations of math functions.
+-- Prefixed with std_ to avoid collision with C runtime during transition.
+-- Once the C runtime is dropped, these become the canonical implementations.
+-- ===================================================================
+
+task std_abs(x: int) -> int {
+    if x < 0 { give back 0 - x }
+    give back x
+}
+
+task std_clamp(x: int, lo: int, hi: int) -> int {
+    if x < lo { give back lo }
+    if x > hi { give back hi }
+    give back x
+}
+
+task std_pow(base: int, exp: int) -> int {
+    if exp < 0 { give back 0 }
+    pilot res = 1
+    pilot b = base
+    pilot e = exp
+    repeat until e <= 0 {
+        pilot half = e / 2
+        pilot even_part = half * 2
+        pilot odd = e - even_part
+        if odd == 1 {
+            res = res * b
+        }
+        b = b * b
+        e = e / 2
+    }
+    give back res
+}
+
+task std_max(a: int, b: int) -> int {
+    if a > b { give back a }
+    give back b
+}
+
+task std_min(a: int, b: int) -> int {
+    if a < b { give back a }
+    give back b
+}
+
+task int_to_word(n: int) -> word {
+    give back word_from_int(n)
+}
+
+task std_sign(x: int) -> int {
+    if x > 0 { give back 1 }
+    if x < 0 { give back 0 - 1 }
+    give back 0
+}
+
+task std_gcd(a: int, b: int) -> int {
+    pilot x = std_abs(a)
+    pilot y = std_abs(b)
+    repeat until y == 0 {
+        pilot tmp = y
+        pilot rem = x - x / y * y
+        x = tmp
+        y = rem
+    }
+    give back x
+}
+
+task std_lcm(a: int, b: int) -> int {
+    if a == 0 or b == 0 { give back 0 }
+    pilot g = std_gcd(a, b)
+    pilot aa = std_abs(a)
+    pilot bb = std_abs(b)
+    give back aa / g * bb
+}
+
+task std_factorial(n: int) -> int {
+    if n <= 1 { give back 1 }
+    pilot f = 1
+    pilot i = 2
+    repeat until i > n {
+        f = f * i
+        i += 1
+    }
+    give back f
+}
+
+task std_fibonacci(n: int) -> int {
+    if n <= 0 { give back 0 }
+    if n == 1 { give back 1 }
+    pilot a = 0
+    pilot b = 1
+    pilot i = 2
+    repeat until i > n {
+        pilot tmp = a + b
+        a = b
+        b = tmp
+        i += 1
+    }
+    give back b
+}
+
+task std_is_even(x: int) -> bool {
+    pilot half = x / 2
+    give back half * 2 == x
+}
+
+task std_is_odd(x: int) -> bool {
+    give back not std_is_even(x)
+}
+-- ===================================================================
+-- FREAK Standard Library — std::string
+-- ===================================================================
+-- String utility functions written in pure FREAK.
+-- These operate on the word type using built-in methods.
+-- ===================================================================
+
+task string_repeat(s: word, count: int) -> word {
+    pilot out = ""
+    pilot i = 0
+    repeat count times {
+        out = out + s
+        i += 1
+    }
+    give back out
+}
+
+task string_pad_left(s: word, width: int, pad_char: word) -> word {
+    pilot slen = s.length()
+    if slen >= width { give back s }
+    pilot needed = width - slen
+    pilot padding = string_repeat(pad_char, needed)
+    give back padding + s
+}
+
+task string_pad_right(s: word, width: int, pad_char: word) -> word {
+    pilot slen = s.length()
+    if slen >= width { give back s }
+    pilot needed = width - slen
+    pilot padding = string_repeat(pad_char, needed)
+    give back s + padding
+}
+
+task string_reverse(s: word) -> word {
+    pilot slen = s.length()
+    if slen <= 1 { give back s }
+    pilot out = ""
+    pilot i = slen - 1
+    repeat slen times {
+        out = out + s.char_at(i)
+        i -= 1
+    }
+    give back out
+}
+
+task string_count(haystack: word, needle: word) -> int {
+    pilot hlen = haystack.length()
+    pilot nlen = needle.length()
+    if nlen == 0 { give back 0 }
+    if nlen > hlen { give back 0 }
+    pilot count = 0
+    pilot i = 0
+    pilot limit = hlen - nlen + 1
+    repeat limit times {
+        pilot match = true
+        pilot j = 0
+        repeat nlen times {
+            if match {
+                if haystack.char_at(i + j) != needle.char_at(j) {
+                    match = false
+                }
+            }
+            j += 1
+        }
+        if match { count += 1 }
+        i += 1
+    }
+    give back count
+}
+
+task string_split(s: word, delim: word) -> word {
+    -- Returns pipe-delimited segments: "a|b|c"
+    pilot slen = s.length()
+    pilot dlen = delim.length()
+    if dlen == 0 { give back s }
+    pilot sp_out = ""
+    pilot sp_cur = ""
+    pilot sp_i = 0
+    repeat slen times {
+        pilot sp_match = true
+        if sp_i + dlen <= slen {
+            pilot sp_j = 0
+            repeat dlen times {
+                if sp_match {
+                    if s.char_at(sp_i + sp_j) != delim.char_at(sp_j) {
+                        sp_match = false
+                    }
+                }
+                sp_j += 1
+            }
+        } else {
+            sp_match = false
+        }
+        if sp_match {
+            if sp_out == "" {
+                sp_out = sp_cur
+            } else {
+                sp_out = sp_out + "|" + sp_cur
+            }
+            sp_cur = ""
+            sp_i += dlen
+        } else {
+            sp_cur = sp_cur + s.char_at(sp_i)
+            sp_i += 1
+        }
+    }
+    -- Add last segment
+    if sp_out == "" {
+        sp_out = sp_cur
+    } else {
+        sp_out = sp_out + "|" + sp_cur
+    }
+    give back sp_out
+}
+
+task string_join(parts: word, separator: word) -> word {
+    -- Joins pipe-delimited segments: "a|b|c" with separator
+    pilot plen = parts.length()
+    if plen == 0 { give back "" }
+    pilot jn_out = ""
+    pilot jn_cur = ""
+    pilot jn_first = true
+    pilot jn_i = 0
+    repeat plen times {
+        pilot jn_c = parts.char_at(jn_i)
+        if jn_c == "|" {
+            if jn_first {
+                jn_out = jn_cur
+                jn_first = false
+            } else {
+                jn_out = jn_out + separator + jn_cur
+            }
+            jn_cur = ""
+        } else {
+            jn_cur = jn_cur + jn_c
+        }
+        jn_i += 1
+    }
+    -- Add last segment
+    if jn_first {
+        jn_out = jn_cur
+    } else {
+        jn_out = jn_out + separator + jn_cur
+    }
+    give back jn_out
+}
+
+task is_digit(c: word) -> bool {
+    if c == "0" { give back true }
+    if c == "1" { give back true }
+    if c == "2" { give back true }
+    if c == "3" { give back true }
+    if c == "4" { give back true }
+    if c == "5" { give back true }
+    if c == "6" { give back true }
+    if c == "7" { give back true }
+    if c == "8" { give back true }
+    if c == "9" { give back true }
+    give back false
+}
+
+task is_alpha(c: word) -> bool {
+    -- Check lowercase
+    if c == "a" or c == "b" or c == "c" or c == "d" or c == "e" { give back true }
+    if c == "f" or c == "g" or c == "h" or c == "i" or c == "j" { give back true }
+    if c == "k" or c == "l" or c == "m" or c == "n" or c == "o" { give back true }
+    if c == "p" or c == "q" or c == "r" or c == "s" or c == "t" { give back true }
+    if c == "u" or c == "v" or c == "w" or c == "x" or c == "y" or c == "z" { give back true }
+    -- Check uppercase
+    if c == "A" or c == "B" or c == "C" or c == "D" or c == "E" { give back true }
+    if c == "F" or c == "G" or c == "H" or c == "I" or c == "J" { give back true }
+    if c == "K" or c == "L" or c == "M" or c == "N" or c == "O" { give back true }
+    if c == "P" or c == "Q" or c == "R" or c == "S" or c == "T" { give back true }
+    if c == "U" or c == "V" or c == "W" or c == "X" or c == "Y" or c == "Z" { give back true }
+    give back false
+}
+
+task is_whitespace(c: word) -> bool {
+    if c == " " { give back true }
+    if c == "\t" { give back true }
+    if c == "\n" { give back true }
+    if c == "\r" { give back true }
+    give back false
+}
+
+task string_starts_with(s: word, prefix: word) -> bool {
+    pilot slen = s.length()
+    pilot plen = prefix.length()
+    if plen > slen { give back false }
+    pilot si = 0
+    repeat plen times {
+        if s.char_at(si) != prefix.char_at(si) { give back false }
+        si += 1
+    }
+    give back true
+}
+
+task string_ends_with(s: word, suffix: word) -> bool {
+    pilot slen = s.length()
+    pilot xlen = suffix.length()
+    if xlen > slen { give back false }
+    pilot offset = slen - xlen
+    pilot ei = 0
+    repeat xlen times {
+        if s.char_at(offset + ei) != suffix.char_at(ei) { give back false }
+        ei += 1
+    }
+    give back true
+}
+
+task string_contains(haystack: word, needle: word) -> bool {
+    give back string_count(haystack, needle) > 0
+}
+
+task string_trim(s: word) -> word {
+    pilot slen = s.length()
+    if slen == 0 { give back s }
+    pilot tstart = 0
+    repeat until tstart >= slen {
+        if not is_whitespace(s.char_at(tstart)) { give back string_trim_end(s, tstart) }
+        tstart += 1
+    }
+    give back ""
+}
+
+task string_trim_end(s: word, tstart: int) -> word {
+    pilot tend = s.length() - 1
+    repeat until tend < tstart {
+        if not is_whitespace(s.char_at(tend)) {
+            pilot tout = ""
+            pilot ti = tstart
+            repeat until ti > tend {
+                tout = tout + s.char_at(ti)
+                ti += 1
+            }
+            give back tout
+        }
+        tend -= 1
+    }
+    give back ""
+}
+
+task string_replace(s: word, old_str: word, new_str: word) -> word {
+    pilot slen = s.length()
+    pilot olen = old_str.length()
+    if olen == 0 { give back s }
+    pilot rout = ""
+    pilot ri = 0
+    repeat until ri >= slen {
+        pilot rmatch = true
+        if ri + olen <= slen {
+            pilot rj = 0
+            repeat olen times {
+                if rmatch {
+                    if s.char_at(ri + rj) != old_str.char_at(rj) {
+                        rmatch = false
+                    }
+                }
+                rj += 1
+            }
+        } else {
+            rmatch = false
+        }
+        if rmatch {
+            rout = rout + new_str
+            ri += olen
+        } else {
+            rout = rout + s.char_at(ri)
+            ri += 1
+        }
+    }
+    give back rout
+}
+
+task string_substring(s: word, start_idx: int, end_idx: int) -> word {
+    pilot slen = s.length()
+    pilot ss = start_idx
+    pilot se = end_idx
+    if ss < 0 { ss = 0 }
+    if se > slen { se = slen }
+    if ss >= se { give back "" }
+    pilot sub_out = ""
+    pilot si = ss
+    repeat until si >= se {
+        sub_out = sub_out + s.char_at(si)
+        si += 1
+    }
+    give back sub_out
+}
+
+task string_index_of(s: word, needle: word) -> int {
+    pilot slen = s.length()
+    pilot nlen = needle.length()
+    if nlen == 0 { give back 0 }
+    if nlen > slen { give back 0 - 1 }
+    pilot limit = slen - nlen + 1
+    pilot fi = 0
+    repeat limit times {
+        pilot fmatch = true
+        pilot fj = 0
+        repeat nlen times {
+            if fmatch {
+                if s.char_at(fi + fj) != needle.char_at(fj) {
+                    fmatch = false
+                }
+            }
+            fj += 1
+        }
+        if fmatch { give back fi }
+        fi += 1
+    }
+    give back 0 - 1
+}
+-- ===================================================================
+-- FREAK Standard Library — std::convert
+-- ===================================================================
+-- Number-to-string conversion utilities in pure FREAK.
+-- ===================================================================
+
+task int_to_hex(n: int) -> word {
+    if n == 0 { give back "0" }
+    pilot hex_chars = "0123456789abcdef"
+    pilot neg = false
+    pilot val = n
+    if val < 0 {
+        neg = true
+        val = 0 - val
+    }
+    pilot hex_out = ""
+    repeat until val <= 0 {
+        pilot rem = val - val / 16 * 16
+        hex_out = hex_chars.char_at(rem) + hex_out
+        val = val / 16
+    }
+    if neg { hex_out = "-" + hex_out }
+    give back hex_out
+}
+
+task int_to_bin(n: int) -> word {
+    if n == 0 { give back "0" }
+    pilot neg = false
+    pilot val = n
+    if val < 0 {
+        neg = true
+        val = 0 - val
+    }
+    pilot bin_out = ""
+    repeat until val <= 0 {
+        pilot rem = val - val / 2 * 2
+        if rem == 1 {
+            bin_out = "1" + bin_out
+        } else {
+            bin_out = "0" + bin_out
+        }
+        val = val / 2
+    }
+    if neg { bin_out = "-" + bin_out }
+    give back bin_out
+}
+
+task int_to_oct(n: int) -> word {
+    if n == 0 { give back "0" }
+    pilot oct_chars = "01234567"
+    pilot neg = false
+    pilot val = n
+    if val < 0 {
+        neg = true
+        val = 0 - val
+    }
+    pilot oct_out = ""
+    repeat until val <= 0 {
+        pilot rem = val - val / 8 * 8
+        oct_out = oct_chars.char_at(rem) + oct_out
+        val = val / 8
+    }
+    if neg { oct_out = "-" + oct_out }
+    give back oct_out
+}
+
+task char_to_digit(c: word) -> int {
+    if c == "0" { give back 0 }
+    if c == "1" { give back 1 }
+    if c == "2" { give back 2 }
+    if c == "3" { give back 3 }
+    if c == "4" { give back 4 }
+    if c == "5" { give back 5 }
+    if c == "6" { give back 6 }
+    if c == "7" { give back 7 }
+    if c == "8" { give back 8 }
+    if c == "9" { give back 9 }
+    give back 0 - 1
+}
+
+task word_to_int_safe(s: word) -> int {
+    pilot slen = s.length()
+    if slen == 0 { give back 0 }
+    pilot neg = false
+    pilot wi = 0
+    if s.char_at(0) == "-" {
+        neg = true
+        wi = 1
+    }
+    pilot num = 0
+    repeat until wi >= slen {
+        pilot d = char_to_digit(s.char_at(wi))
+        if d < 0 { give back 0 }
+        num = num * 10 + d
+        wi += 1
+    }
+    if neg { give back 0 - num }
+    give back num
+}
+
+task bool_to_word(b: bool) -> word {
+    if b { give back "true" }
+    give back "false"
+}
+-- ===================================================================
+-- FREAK Standard Library — std::algorithm
+-- ===================================================================
+-- Sorting, searching, and array utility algorithms in pure FREAK.
+-- Uses the C runtime array_* primitives as the underlying storage.
+-- ===================================================================
+
+-- Sort an integer array in-place using insertion sort.
+-- handle: array handle from array_new()
+task array_sort_int(handle: int) -> void {
+    pilot alen = array_len(handle)
+    if alen <= 1 { give back }
+    pilot si = 1
+    repeat until si >= alen {
+        pilot key_w: word = array_get(handle, si)
+        pilot key = word_to_int(key_w)
+        pilot sj = si - 1
+        pilot sorted = false
+        repeat until sj < 0 or sorted {
+            pilot cw: word = array_get(handle, sj)
+            pilot cv = word_to_int(cw)
+            if cv > key {
+                array_set(handle, sj + 1, cw)
+                sj -= 1
+            } else {
+                sorted = true
+            }
+        }
+        array_set(handle, sj + 1, word_from_int(key))
+        si += 1
+    }
+}
+
+-- Sort a word array in-place (lexicographic, using string comparison).
+task array_sort_word(handle: int) -> void {
+    pilot alen = array_len(handle)
+    if alen <= 1 { give back }
+    pilot si = 1
+    repeat until si >= alen {
+        pilot key_w: word = array_get(handle, si)
+        pilot sj = si - 1
+        pilot sorted = false
+        repeat until sj < 0 or sorted {
+            pilot cw: word = array_get(handle, sj)
+            if freak_word_compare(cw, key_w) > 0 {
+                array_set(handle, sj + 1, cw)
+                sj -= 1
+            } else {
+                sorted = true
+            }
+        }
+        array_set(handle, sj + 1, key_w)
+        si += 1
+    }
+}
+
+-- Lexicographic comparison: returns -1, 0, or 1.
+-- Uses the C runtime's strcmp-based comparison for correct ordering.
+extern task freak_word_compare(a: word, b: word) -> int
+
+-- Binary search on a sorted integer array. Returns index or -1.
+task array_binary_search_int(handle: int, target: int) -> int {
+    pilot lo = 0
+    pilot hi = array_len(handle) - 1
+    repeat until lo > hi {
+        pilot range = hi - lo
+        pilot half = range / 2
+        pilot mid = lo + half
+        pilot mw: word = array_get(handle, mid)
+        pilot mv = word_to_int(mw)
+        if mv == target { give back mid }
+        if mv < target {
+            lo = mid + 1
+        } else {
+            hi = mid - 1
+        }
+    }
+    give back 0 - 1
+}
+
+-- Linear search in an array. Returns index or -1.
+task array_find(handle: int, target: word) -> int {
+    pilot alen = array_len(handle)
+    pilot fi = 0
+    repeat alen times {
+        pilot fw: word = array_get(handle, fi)
+        if fw == target { give back fi }
+        fi += 1
+    }
+    give back 0 - 1
+}
+
+-- Check if an array contains a value.
+task array_contains(handle: int, target: word) -> bool {
+    give back array_find(handle, target) >= 0
+}
+
+-- Reverse an array in-place.
+task array_reverse(handle: int) -> void {
+    pilot alen = array_len(handle)
+    if alen <= 1 { give back }
+    pilot lo = 0
+    pilot hi = alen - 1
+    repeat until lo >= hi {
+        pilot tmp: word = array_get(handle, lo)
+        pilot hw: word = array_get(handle, hi)
+        array_set(handle, lo, hw)
+        array_set(handle, hi, tmp)
+        lo += 1
+        hi -= 1
+    }
+}
+
+-- Copy elements from one array to a new array.
+task array_copy(handle: int) -> int {
+    pilot new_arr = array_new()
+    pilot alen = array_len(handle)
+    pilot ci = 0
+    repeat alen times {
+        pilot cw: word = array_get(handle, ci)
+        array_push(new_arr, cw)
+        ci += 1
+    }
+    give back new_arr
+}
+
+-- Join array elements into a single word with separator.
+task array_join(handle: int, sep: word) -> word {
+    pilot alen = array_len(handle)
+    if alen == 0 { give back "" }
+    pilot aj_out: word = array_get(handle, 0)
+    pilot ji = 1
+    repeat until ji >= alen {
+        pilot jw: word = array_get(handle, ji)
+        aj_out = aj_out + sep + jw
+        ji += 1
+    }
+    give back aj_out
+}
+
+-- Count occurrences of a value in an array.
+task array_count(handle: int, target: word) -> int {
+    pilot alen = array_len(handle)
+    pilot cnt = 0
+    pilot ci = 0
+    repeat alen times {
+        pilot cw: word = array_get(handle, ci)
+        if cw == target { cnt += 1 }
+        ci += 1
+    }
+    give back cnt
+}
+
+-- Remove duplicates from a sorted array (in-place). Returns new length.
+task array_unique(handle: int) -> int {
+    pilot alen = array_len(handle)
+    if alen <= 1 { give back alen }
+    pilot write_idx = 1
+    pilot ri = 1
+    repeat until ri >= alen {
+        pilot cur: word = array_get(handle, ri)
+        pilot prev: word = array_get(handle, ri - 1)
+        if cur != prev {
+            array_set(handle, write_idx, cur)
+            write_idx += 1
+        }
+        ri += 1
+    }
+    give back write_idx
+}
+
+-- Sum all integer values in an array.
+task array_sum_int(handle: int) -> int {
+    pilot alen = array_len(handle)
+    pilot total = 0
+    pilot si = 0
+    repeat alen times {
+        pilot sw: word = array_get(handle, si)
+        total += word_to_int(sw)
+        si += 1
+    }
+    give back total
+}
+
+-- Find the maximum integer value in an array. Returns 0 for empty.
+task array_max_int(handle: int) -> int {
+    pilot alen = array_len(handle)
+    if alen == 0 { give back 0 }
+    pilot mw: word = array_get(handle, 0)
+    pilot mx = word_to_int(mw)
+    pilot mi = 1
+    repeat until mi >= alen {
+        pilot cw: word = array_get(handle, mi)
+        pilot cv = word_to_int(cw)
+        if cv > mx { mx = cv }
+        mi += 1
+    }
+    give back mx
+}
+
+-- Find the minimum integer value in an array. Returns 0 for empty.
+task array_min_int(handle: int) -> int {
+    pilot alen = array_len(handle)
+    if alen == 0 { give back 0 }
+    pilot mw: word = array_get(handle, 0)
+    pilot mn = word_to_int(mw)
+    pilot mi = 1
+    repeat until mi >= alen {
+        pilot cw: word = array_get(handle, mi)
+        pilot cv = word_to_int(cw)
+        if cv < mn { mn = cv }
+        mi += 1
+    }
+    give back mn
+}
+-- ===================================================================
+-- FREAK Standard Library — std::json
+-- ===================================================================
+-- A JSON parser and serializer written in pure FREAK.
+-- Uses dynamic arrays as the backing store for JSON values.
+--
+-- JSON values are stored as tagged entries in parallel arrays:
+--   json_types[i]  = "s" | "n" | "b" | "null" | "a" | "o"
+--   json_vals[i]   = string value (for s/n/b/null) or ""
+--   json_children[i] = array handle of child indices (for a/o)
+--   json_keys[i]   = array handle of key strings (for o only)
+--
+-- Parse with: json_parse(source) -> handle (int)
+-- Access with: json_get_type, json_get_str, json_get_int, json_get_bool
+-- Object access: json_obj_get(handle, key) -> child handle
+-- Array access: json_arr_get(handle, index) -> child handle
+-- Serialize with: json_stringify(handle) -> word
+-- ===================================================================
+
+-- Value pool
+pilot json_types = 0
+pilot json_vals = 0
+pilot json_children = 0
+pilot json_keys = 0
+pilot json_count = 0
+pilot json_inited = 0
+
+-- Parser state
+pilot json_src = ""
+pilot json_pos = 0
+pilot json_len = 0
+
+task json_init() -> void {
+    if json_inited == 0 {
+        json_types = array_new()
+        json_vals = array_new()
+        json_children = array_new()
+        json_keys = array_new()
+        json_count = 0
+        json_inited = 1
+    }
+}
+
+-- Allocate a new JSON value slot, returns its index.
+task json_alloc(jtype: word, jval: word) -> int {
+    pilot idx = json_count
+    array_push(json_types, jtype)
+    array_push(json_vals, jval)
+    array_push(json_children, word_from_int(0))
+    array_push(json_keys, word_from_int(0))
+    json_count += 1
+    give back idx
+}
+
+-- === Accessors ===
+
+task json_get_type(handle: int) -> word {
+    give back array_get(json_types, handle)
+}
+
+task json_get_str(handle: int) -> word {
+    give back array_get(json_vals, handle)
+}
+
+task json_get_int(handle: int) -> int {
+    pilot v: word = array_get(json_vals, handle)
+    give back word_to_int(v)
+}
+
+task json_get_bool(handle: int) -> bool {
+    pilot v: word = array_get(json_vals, handle)
+    give back v == "true"
+}
+
+task json_is_null(handle: int) -> bool {
+    pilot t: word = array_get(json_types, handle)
+    give back t == "null"
+}
+
+task json_arr_len(handle: int) -> int {
+    pilot ch: word = array_get(json_children, handle)
+    pilot ch_handle = word_to_int(ch)
+    give back array_len(ch_handle)
+}
+
+task json_arr_get(handle: int, index: int) -> int {
+    pilot ch: word = array_get(json_children, handle)
+    pilot ch_handle = word_to_int(ch)
+    pilot val_w: word = array_get(ch_handle, index)
+    give back word_to_int(val_w)
+}
+
+task json_obj_len(handle: int) -> int {
+    pilot ks: word = array_get(json_keys, handle)
+    pilot ks_handle = word_to_int(ks)
+    give back array_len(ks_handle)
+}
+
+task json_obj_get(handle: int, key: word) -> int {
+    pilot ks: word = array_get(json_keys, handle)
+    pilot ks_handle = word_to_int(ks)
+    pilot ch: word = array_get(json_children, handle)
+    pilot ch_handle = word_to_int(ch)
+    pilot klen = array_len(ks_handle)
+    pilot ki = 0
+    repeat klen times {
+        pilot k: word = array_get(ks_handle, ki)
+        if k == key {
+            pilot v: word = array_get(ch_handle, ki)
+            give back word_to_int(v)
+        }
+        ki += 1
+    }
+    give back 0 - 1
+}
+
+task json_obj_has(handle: int, key: word) -> bool {
+    give back json_obj_get(handle, key) >= 0
+}
+
+task json_obj_key_at(handle: int, index: int) -> word {
+    pilot ks: word = array_get(json_keys, handle)
+    pilot ks_handle = word_to_int(ks)
+    give back array_get(ks_handle, index)
+}
+
+-- === Parser internals ===
+
+task json_cur() -> word {
+    if json_pos >= json_len { give back "" }
+    give back json_src.char_at(json_pos)
+}
+
+task json_advance() -> word {
+    pilot c = json_cur()
+    json_pos += 1
+    give back c
+}
+
+task json_skip_ws() -> void {
+    repeat until json_pos >= json_len {
+        pilot c = json_cur()
+        if c != " " and c != "\n" and c != "\r" and c != "\t" {
+            give back
+        }
+        json_pos += 1
+    }
+}
+
+task json_expect(ch: word) -> void {
+    pilot c = json_advance()
+    if c != ch {
+        say "JSON parse error: expected '" + ch + "' got '" + c + "'"
+    }
+}
+
+task json_parse_string() -> word {
+    json_expect("\"")
+    pilot ps_out = ""
+    repeat until json_pos >= json_len {
+        pilot c = json_advance()
+        if c == "\"" { give back ps_out }
+        if c == "\\" {
+            pilot esc = json_advance()
+            if esc == "n" {
+                ps_out = ps_out + "\n"
+            } else if esc == "t" {
+                ps_out = ps_out + "\t"
+            } else if esc == "r" {
+                ps_out = ps_out + "\r"
+            } else if esc == "\\" {
+                ps_out = ps_out + "\\"
+            } else if esc == "\"" {
+                ps_out = ps_out + "\""
+            } else if esc == "/" {
+                ps_out = ps_out + "/"
+            } else {
+                ps_out = ps_out + esc
+            }
+        } else {
+            ps_out = ps_out + c
+        }
+    }
+    give back ps_out
+}
+
+task json_parse_number() -> word {
+    pilot pn_out = ""
+    pilot c = json_cur()
+    if c == "-" {
+        pn_out = "-"
+        json_pos += 1
+    }
+    repeat until json_pos >= json_len {
+        c = json_cur()
+        if c == "0" or c == "1" or c == "2" or c == "3" or c == "4" or c == "5" or c == "6" or c == "7" or c == "8" or c == "9" or c == "." {
+            pn_out = pn_out + c
+            json_pos += 1
+        } else {
+            give back pn_out
+        }
+    }
+    give back pn_out
+}
+
+task json_try_keyword(kw: word) -> bool {
+    pilot kwlen = kw.length()
+    if json_pos + kwlen > json_len { give back false }
+    pilot ki = 0
+    repeat kwlen times {
+        if json_src.char_at(json_pos + ki) != kw.char_at(ki) { give back false }
+        ki += 1
+    }
+    json_pos += kwlen
+    give back true
+}
+
+-- Main recursive parser. Returns handle to parsed value.
+task json_parse_value() -> int {
+    json_skip_ws()
+    pilot c = json_cur()
+
+    -- String
+    if c == "\"" {
+        pilot sv = json_parse_string()
+        give back json_alloc("s", sv)
+    }
+
+    -- Number
+    if c == "-" or c == "0" or c == "1" or c == "2" or c == "3" or c == "4" or c == "5" or c == "6" or c == "7" or c == "8" or c == "9" {
+        pilot nv = json_parse_number()
+        give back json_alloc("n", nv)
+    }
+
+    -- Boolean true
+    if c == "t" {
+        if json_try_keyword("true") {
+            give back json_alloc("b", "true")
+        }
+    }
+
+    -- Boolean false
+    if c == "f" {
+        if json_try_keyword("false") {
+            give back json_alloc("b", "false")
+        }
+    }
+
+    -- Null
+    if c == "n" {
+        if json_try_keyword("null") {
+            give back json_alloc("null", "")
+        }
+    }
+
+    -- Array
+    if c == "[" {
+        json_pos += 1
+        pilot arr_children = array_new()
+        pilot arr_handle = json_alloc("a", "")
+        array_set(json_children, arr_handle, word_from_int(arr_children))
+        json_skip_ws()
+        if json_cur() != "]" {
+            pilot first_val = json_parse_value()
+            array_push(arr_children, word_from_int(first_val))
+            json_skip_ws()
+            repeat until json_cur() != "," {
+                json_pos += 1
+                pilot next_val = json_parse_value()
+                array_push(arr_children, word_from_int(next_val))
+                json_skip_ws()
+            }
+        }
+        json_expect("]")
+        give back arr_handle
+    }
+
+    -- Object
+    if c == "{" {
+        json_pos += 1
+        pilot obj_children = array_new()
+        pilot obj_keys = array_new()
+        pilot obj_handle = json_alloc("o", "")
+        array_set(json_children, obj_handle, word_from_int(obj_children))
+        array_set(json_keys, obj_handle, word_from_int(obj_keys))
+        json_skip_ws()
+        if json_cur() != "}" {
+            pilot k1 = json_parse_string()
+            json_skip_ws()
+            json_expect(":")
+            pilot v1 = json_parse_value()
+            array_push(obj_keys, k1)
+            array_push(obj_children, word_from_int(v1))
+            json_skip_ws()
+            repeat until json_cur() != "," {
+                json_pos += 1
+                json_skip_ws()
+                pilot kn = json_parse_string()
+                json_skip_ws()
+                json_expect(":")
+                pilot vn = json_parse_value()
+                array_push(obj_keys, kn)
+                array_push(obj_children, word_from_int(vn))
+                json_skip_ws()
+            }
+        }
+        json_expect("}")
+        give back obj_handle
+    }
+
+    say "JSON parse error: unexpected '" + c + "'"
+    give back 0 - 1
+}
+
+-- === Public API ===
+
+task json_parse(source: word) -> int {
+    json_init()
+    json_src = source
+    json_pos = 0
+    json_len = source.length()
+    give back json_parse_value()
+}
+
+-- === Serializer ===
+
+task json_stringify(handle: int) -> word {
+    if handle < 0 { give back "null" }
+    pilot t: word = array_get(json_types, handle)
+
+    if t == "s" {
+        pilot sv: word = array_get(json_vals, handle)
+        give back "\"" + sv + "\""
+    }
+
+    if t == "n" {
+        give back array_get(json_vals, handle)
+    }
+
+    if t == "b" {
+        give back array_get(json_vals, handle)
+    }
+
+    if t == "null" {
+        give back "null"
+    }
+
+    if t == "a" {
+        pilot alen = json_arr_len(handle)
+        pilot a_out = "["
+        pilot ai = 0
+        repeat alen times {
+            if ai > 0 { a_out = a_out + "," }
+            pilot child = json_arr_get(handle, ai)
+            a_out = a_out + json_stringify(child)
+            ai += 1
+        }
+        give back a_out + "]"
+    }
+
+    if t == "o" {
+        pilot olen = json_obj_len(handle)
+        pilot o_out = "{"
+        pilot oi = 0
+        repeat olen times {
+            if oi > 0 { o_out = o_out + "," }
+            pilot okey: word = json_obj_key_at(handle, oi)
+            pilot ov = json_arr_get(handle, oi)
+            o_out = o_out + "\"" + okey + "\":" + json_stringify(ov)
+            oi += 1
+        }
+        give back o_out + "}"
+    }
+
+    give back "null"
+}
+-- Test: std::json parser and serializer
+
+-- === Parse primitives ===
+pilot h1 = json_parse("\"hello world\"")
+say "string: " + json_get_str(h1)
+say "type: " + json_get_type(h1)
+
+pilot h2 = json_parse("42")
+say "number: " + word_from_int(json_get_int(h2))
+say "type: " + json_get_type(h2)
+
+pilot h3 = json_parse("true")
+say "bool: " + bool_to_word(json_get_bool(h3))
+
+pilot h4 = json_parse("false")
+say "bool: " + bool_to_word(json_get_bool(h4))
+
+pilot h5 = json_parse("null")
+say "null: " + bool_to_word(json_is_null(h5))
+
+-- === Parse array ===
+pilot h6 = json_parse("[1, 2, 3]")
+say "array type: " + json_get_type(h6)
+say "array len: " + word_from_int(json_arr_len(h6))
+pilot e0 = json_arr_get(h6, 0)
+pilot e1 = json_arr_get(h6, 1)
+pilot e2 = json_arr_get(h6, 2)
+say "arr[0] = " + json_get_str(e0)
+say "arr[1] = " + json_get_str(e1)
+say "arr[2] = " + json_get_str(e2)
+
+-- === Parse object ===
+pilot h7 = json_parse("{\"name\": \"Takeru\", \"power\": 9001, \"alive\": true}")
+say "obj type: " + json_get_type(h7)
+say "obj len: " + word_from_int(json_obj_len(h7))
+
+pilot name_h = json_obj_get(h7, "name")
+say "name = " + json_get_str(name_h)
+
+pilot pow_h = json_obj_get(h7, "power")
+say "power = " + word_from_int(json_get_int(pow_h))
+
+pilot alive_h = json_obj_get(h7, "alive")
+say "alive = " + bool_to_word(json_get_bool(alive_h))
+
+say "has 'name': " + bool_to_word(json_obj_has(h7, "name"))
+say "has 'missing': " + bool_to_word(json_obj_has(h7, "missing"))
+
+-- === Nested ===
+pilot h8 = json_parse("{\"pilots\": [\"Takeru\", \"Meiya\"], \"count\": 2}")
+pilot pilots_h = json_obj_get(h8, "pilots")
+say "pilots type: " + json_get_type(pilots_h)
+say "pilots len: " + word_from_int(json_arr_len(pilots_h))
+pilot p0 = json_arr_get(pilots_h, 0)
+pilot p1 = json_arr_get(pilots_h, 1)
+say "pilot[0] = " + json_get_str(p0)
+say "pilot[1] = " + json_get_str(p1)
+
+-- === Stringify ===
+pilot s1 = json_stringify(h1)
+say "stringify string: " + s1
+
+pilot s2 = json_stringify(h2)
+say "stringify number: " + s2
+
+pilot s6 = json_stringify(h6)
+say "stringify array: " + s6
+
+pilot s7 = json_stringify(h7)
+say "stringify object: " + s7
+
+-- === Negative number ===
+pilot h9 = json_parse("-42")
+say "negative: " + word_from_int(json_get_int(h9))
+
+-- === Empty containers ===
+pilot h10 = json_parse("[]")
+say "empty array len: " + word_from_int(json_arr_len(h10))
+
+pilot h11 = json_parse("{}")
+say "empty object len: " + word_from_int(json_obj_len(h11))
+
+say ""
+say "All JSON tests passed!"

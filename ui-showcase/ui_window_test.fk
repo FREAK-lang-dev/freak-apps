@@ -1,0 +1,126 @@
+-- FREAK UI Window Test — Phase MA proof of concept
+-- Opens a window, draws shapes, handles keyboard/mouse events
+--
+-- Build with:
+--   freakc build tests/ui_window_test.fk --ui
+-- Or manually:
+--   python -m freakc build tests/ui_window_test.fk
+--   clang tests/ui_window_test.fk.c freakc/runtime/freak_runtime.c freakc/runtime/ui/win32_backend.c -Ifreakc/runtime -Ifreakc/runtime/ui -luser32 -lgdi32 -o tests/ui_window_test.exe -O2
+
+use std::ui::{Window, WindowConfig, Canvas, Color, Rect, Vec2, Font, Event, EVENT_QUIT, EVENT_KEY, EVENT_MOUSE, KEY_ESCAPE, MOUSE_LEFT}
+
+task main() {
+    pilot win = Window::open(WindowConfig {
+        title: "FREAK UI — Phase MA Test",
+        width: 800,
+        height: 600,
+        resizable: true,
+        vsync: true
+    })
+
+    pilot canvas = Canvas::from_window(win)
+
+    -- State
+    pilot running = true
+    pilot mouse_x = 400
+    pilot mouse_y = 300
+    pilot click_x = 0
+    pilot click_y = 0
+    pilot clicks = 0
+
+    say "FREAK UI window opened. Press ESC to quit."
+
+    repeat until not running {
+        -- Poll events
+        pilot events = win.poll()
+        for each ev in events {
+            if ev.is_quit() {
+                running = false
+            }
+            if ev.kind == EVENT_KEY and ev.key == KEY_ESCAPE and ev.pressed == 1 {
+                running = false
+            }
+            if ev.kind == EVENT_MOUSE {
+                mouse_x = ev.mouse_x
+                mouse_y = ev.mouse_y
+                if ev.button == MOUSE_LEFT and ev.pressed == 1 {
+                    click_x = ev.mouse_x
+                    click_y = ev.mouse_y
+                    clicks = clicks + 1
+                }
+            }
+        }
+
+        if not running { give back }
+
+        -- Draw frame
+        canvas.begin()
+
+        -- Dark background
+        canvas.clear(Color::dark_bg())
+
+        -- Title text
+        canvas.draw_text("FREAK UI — Phase MA", 20, 20, Font::heading(), Color::white())
+        canvas.draw_text("Press ESC to quit. Click anywhere.", 20, 55, Font::default(), Color::muted())
+
+        -- Info display
+        canvas.draw_text("Mouse: ({mouse_x}, {mouse_y})", 20, 90, Font::mono(), Color::accent())
+        canvas.draw_text("Clicks: {clicks}", 20, 110, Font::mono(), Color::accent())
+
+        -- Draw some shapes
+        -- Red rectangle
+        canvas.fill_rect(
+            Rect { x: 100, y: 150, w: 200, h: 120 },
+            Color::rgb(200, 50, 50)
+        )
+        canvas.draw_text("fill_rect", 150, 200, Font::default(), Color::white())
+
+        -- Blue outlined rectangle
+        canvas.stroke_rect(
+            Rect { x: 350, y: 150, w: 200, h: 120 },
+            Color::rgb(50, 120, 255),
+            3
+        )
+        canvas.draw_text("stroke_rect", 390, 200, Font::default(), Color::rgb(50, 120, 255))
+
+        -- Green circle
+        canvas.fill_circle(Vec2 { x: 200, y: 380 }, 60, Color::rgb(50, 200, 80))
+        canvas.draw_text("fill_circle", 160, 370, Font::default(), Color::white())
+
+        -- Diagonal line
+        canvas.draw_line(
+            Vec2 { x: 350, y: 300 },
+            Vec2 { x: 550, y: 450 },
+            Color::accent(),
+            2
+        )
+        canvas.draw_text("draw_line", 420, 360, Font::default(), Color::accent())
+
+        -- Cursor crosshair
+        canvas.fill_rect(
+            Rect { x: mouse_x - 10, y: mouse_y, w: 21, h: 1 },
+            Color::white()
+        )
+        canvas.fill_rect(
+            Rect { x: mouse_x, y: mouse_y - 10, w: 1, h: 21 },
+            Color::white()
+        )
+
+        -- Click marker
+        if clicks > 0 {
+            canvas.fill_circle(Vec2 { x: click_x, y: click_y }, 8, Color::accent())
+        }
+
+        -- Mood bar at bottom
+        canvas.fill_rect(
+            Rect { x: 0, y: 570, w: 800, h: 30 },
+            Color::surface()
+        )
+        canvas.draw_text("mood: .focused  |  theme: alternative-4", 20, 575, Font::mono(), Color::muted())
+
+        canvas.finish()
+    }
+
+    win.close()
+    say "Window closed. {clicks} total clicks."
+}
