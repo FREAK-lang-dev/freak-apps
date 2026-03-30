@@ -247,13 +247,13 @@ task main() {
                     mx = ui::event_mouse_x(i)
                     my = ui::event_mouse_y(i)
                     pilot btn = ui::event_button(i)
-                    pilot pressed = ui::event_pressed(i)
+                    pilot mpress = ui::event_pressed(i)
                     if btn == 1 {
-                        if pressed == 1 {
+                        if mpress == 1 {
                             if not prev_down { mouse_clicked = true }
                             prev_down = true
                         }
-                        if pressed == 0 { prev_down = false }
+                        if mpress == 0 { prev_down = false }
                     }
                 }
             }
